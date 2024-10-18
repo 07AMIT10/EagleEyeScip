@@ -1,5 +1,4 @@
 streamlit
-openai
+google-cloud-aiplatform
 Pillow
 pandas
-python-dotenv
