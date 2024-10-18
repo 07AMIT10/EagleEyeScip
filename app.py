@@ -21,7 +21,7 @@ def analyze_image(image):
     base64_image = encode_image(image)
     
     response = openai.ChatCompletion.create(
-        model="gpt-4-vision-preview",
+        model="gpt-4o-mini",
         messages=[
             {
                 "role": "user",
