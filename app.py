@@ -1,43 +1,41 @@
 import streamlit as st
-import openai
+import vertexai
+from vertexai.generative_models import GenerativeModel, Part
 import pandas as pd
 from PIL import Image
 import io
-import base64
+import os
 
-# Set up OpenAI API key
-openai.api_key = "{API key}"
+# Initialize Vertex AI
+vertexai.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="us-central1")
+
+# Initialize the Gemini model
+model = GenerativeModel("gemini-1.5-flash-002")
 
 # Initialize session state for product tracking
 if 'product_data' not in st.session_state:
     st.session_state.product_data = []
 
-def encode_image(image):
-    buffered = io.BytesIO()
-    image.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode('utf-8')
-
 def analyze_image(image):
-    base64_image = encode_image(image)
-    
-    response = openai.ChatCompletion.create(
-        model="gpt-4-vision-preview",
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "Analyze this image of an FMCG product and provide the following details:"},
-                    {
-                        "type": "image_url",
-                        "image_url": f"data:image/png;base64,{base64_image}"
-                    }
-                ]
-            }
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='PNG')
+    img_byte_arr = img_byte_arr.getvalue()
+
+    image_part = Part.from_data(img_byte_arr, mime_type="image/png")
+
+    response = model.generate_content(
+        [
+            image_part,
+            "Analyze this image of an FMCG product and provide the following details: Brand Name, Date of Manufacturing, Date of Expiry, Quantity, MRP, and Basic Details (like ingredients or category)."
         ],
-        max_tokens=300
+        generation_config={
+            "max_output_tokens": 1024,
+            "temperature": 0.4,
+            "top_p": 1,
+            "top_k": 32
+        }
     )
-    
-    return response.choices[0].message.content
+    return response.text
 
 def parse_product_details(analysis):
     details = {
@@ -71,7 +69,7 @@ def update_product_data(details):
 def main():
     st.title("FMCG Product Analyzer and Tracker")
     
-    uploaded_file = st.file_uploader("Choose an image of an FMCG product", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("Choose an image of an FMCG product", type=["jpg", "jpeg", "png", "webp", "gif"])
     
     if uploaded_file is not None:
         image = Image.open(uploaded_file)
@@ -80,12 +78,15 @@ def main():
         if st.button("Analyze Image"):
             with st.spinner("Analyzing image..."):
                 analysis = analyze_image(image)
-                details = parse_product_details(analysis)
-                update_product_data(details)
-            
-            st.subheader("Product Details:")
-            for key, value in details.items():
-                st.write(f"{key}: {value}")
+                if analysis:
+                    details = parse_product_details(analysis)
+                    update_product_data(details)
+                
+                    st.subheader("Product Details:")
+                    for key, value in details.items():
+                        st.write(f"{key}: {value}")
+                else:
+                    st.error("Unable to analyze the image. Please try again with a different image.")
     
     st.subheader("Product Inventory")
     if st.session_state.product_data:
