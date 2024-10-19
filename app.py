@@ -22,8 +22,8 @@ try:
     vertexai.init(project=project_id, location="us-central1", credentials=credentials)
     
     # Initialize the Gemini model
-    model = GenerativeModel("gemini-pro-vision")
-    st.success("Google Cloud credentials loaded and Gemini model initialized successfully")
+    model = GenerativeModel("gemini-1.5-flash-002")
+    st.success("Model loaded successfully")
 
 except Exception as e:
     st.error(f"Error loading Google Cloud credentials: {str(e)}")
@@ -79,12 +79,12 @@ def parse_product_details(analysis):
     
     if analysis:
         patterns = {
-            "Brand Name": r"1\.\s*Brand Name:\s*(.+)",
-            "Date of Manufacturing": r"2\.\s*Date of Manufacturing:\s*(.+)",
-            "Date of Expiry": r"3\.\s*Date of Expiry:\s*(.+)",
-            "Quantity": r"4\.\s*Quantity:\s*(.+)",
-            "MRP": r"5\.\s*MRP \(Maximum Retail Price\):\s*(.+)",
-            "Basic Details": r"6\.\s*Basic Details:\s*(.+)"
+            "Brand Name": r"1\.?\s*Brand Name:\s*(.+?)(?=\n\d\.|\Z)",
+            "Date of Manufacturing": r"2\.?\s*Date of Manufacturing:\s*(.+?)(?=\n\d\.|\Z)",
+            "Date of Expiry": r"3\.?\s*Date of Expiry:\s*(.+?)(?=\n\d\.|\Z)",
+            "Quantity": r"4\.?\s*Quantity:\s*(.+?)(?=\n\d\.|\Z)",
+            "MRP": r"5\.?\s*MRP(?:\s*\(Maximum Retail Price\))?:\s*(.+?)(?=\n\d\.|\Z)",
+            "Basic Details": r"6\.?\s*Basic Details:\s*([\s\S]+)"
         }
         
         for key, pattern in patterns.items():
@@ -97,7 +97,7 @@ def parse_product_details(analysis):
 def update_product_data(details):
     # Check if product already exists
     for product in st.session_state.product_data:
-        if (product['Brand Name'] == details['Brand Name'] and
+        if (product['Brand Name'].lower() == details['Brand Name'].lower() and
             product['Quantity'] == details['Quantity'] and
             product['MRP'] == details['MRP']):
             # Update existing entry
