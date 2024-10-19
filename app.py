@@ -38,11 +38,15 @@ if 'product_data' not in st.session_state:
     st.session_state.product_data = []
 
 def analyze_image(image):
+    st.write("Starting image analysis...")
     img_byte_arr = io.BytesIO()
     image.save(img_byte_arr, format='PNG')
     img_byte_arr = img_byte_arr.getvalue()
 
+    st.write("Image converted to bytes successfully.")
+
     image_part = Part.from_data(img_byte_arr, mime_type="image/png")
+    st.write("Image part created successfully.")
 
     prompt = """
     Analyze this image of an FMCG product and provide the following details:
@@ -56,6 +60,7 @@ def analyze_image(image):
     Present the information in a clear, structured format.
     """
 
+    st.write("Sending request to Gemini model...")
     try:
         response = model.generate_content(
             [image_part, prompt],
@@ -66,9 +71,12 @@ def analyze_image(image):
                 "top_k": 32
             }
         )
+        st.write("Response received from Gemini model.")
         return response.text
     except Exception as e:
         st.error(f"Error in image analysis: {str(e)}")
+        st.write(f"Error type: {type(e).__name__}")
+        st.write(f"Error args: {e.args}")
         return None
 
 def parse_product_details(analysis):
