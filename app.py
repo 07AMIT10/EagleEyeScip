@@ -118,7 +118,7 @@ def main():
     
     uploaded_file = st.file_uploader("Choose an image of an FMCG product", type=["jpg", "jpeg", "png"])
     
-    if uploaded_file is not in [None, ""]:
+    if uploaded_file is not None:
         image = Image.open(uploaded_file)
         
         # Resize image for display
