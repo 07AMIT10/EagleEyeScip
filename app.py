@@ -84,13 +84,18 @@ def parse_product_details(analysis):
             "Date of Expiry": r"3\.?\s*Date of Expiry:\s*(.+?)(?=\n\d\.|\Z)",
             "Quantity": r"4\.?\s*Quantity:\s*(.+?)(?=\n\d\.|\Z)",
             "MRP": r"5\.?\s*MRP(?:\s*\(Maximum Retail Price\))?:\s*(.+?)(?=\n\d\.|\Z)",
-            "Basic Details": r"6\.?\s*Basic Details:\s*([\s\S]+)"
+            "Basic Details": r"6\.?\s*Basic Details:(?:\s*[\s\S]*?)?(?:Category|Ingredients):([\s\S]+?)(?=\n\d\.|\Z|$)"
         }
         
         for key, pattern in patterns.items():
             match = re.search(pattern, analysis, re.DOTALL | re.IGNORECASE)
             if match:
-                details[key] = match.group(1).strip()
+                details[key] = match.group(1).strip().split('\n')[0]  # Extract only the first line of match
+                
+        # Additional processing for Basic Details
+        if details["Basic Details"]:
+            basic_details_lines = details["Basic Details"].split('\n')
+            details["Basic Details"] = '\n'.join([line.strip() for line in basic_details_lines if line.strip()])  # Remove empty lines
     
     return details
 
@@ -113,7 +118,7 @@ def main():
     
     uploaded_file = st.file_uploader("Choose an image of an FMCG product", type=["jpg", "jpeg", "png"])
     
-    if uploaded_file is not None:
+    if uploaded_file is not in [None, ""]:
         image = Image.open(uploaded_file)
         
         # Resize image for display
@@ -137,7 +142,7 @@ def main():
                     
                         st.subheader("Product Details:")
                         for key, value in details.items():
-                            if key != 'Count':
+                            if key!= 'Count':
                                 st.write(f"**{key}:** {value}")
                     else:
                         st.error("Unable to analyze the image. Please try again with a different image.")
