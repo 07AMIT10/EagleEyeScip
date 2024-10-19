@@ -22,13 +22,8 @@ try:
     vertexai.init(project=project_id, location="us-central1", credentials=credentials)
     
     # Initialize the Gemini model
-    model = GenerativeModel("gemini-1.5-flash-002")
+    model = GenerativeModel("gemini-pro-vision")
     st.success("Google Cloud credentials loaded and Gemini model initialized successfully")
-
-    # Debug information
-    st.write(f"Project ID: {project_id}")
-    st.write(f"Vertex AI SDK Version: {aiplatform.__version__}")
-    st.write(f"Initialized model: gemini-pro-vision")
 
 except Exception as e:
     st.error(f"Error loading Google Cloud credentials: {str(e)}")
@@ -39,29 +34,24 @@ if 'product_data' not in st.session_state:
     st.session_state.product_data = []
 
 def analyze_image(image):
-    st.write("Starting image analysis...")
     img_byte_arr = io.BytesIO()
     image.save(img_byte_arr, format='PNG')
     img_byte_arr = img_byte_arr.getvalue()
 
-    st.write("Image converted to bytes successfully.")
-
     image_part = Part.from_data(img_byte_arr, mime_type="image/png")
-    st.write("Image part created successfully.")
 
     prompt = """
     Analyze this image of an FMCG product and provide the following details:
-    - Brand Name
-    - Date of Manufacturing
-    - Date of Expiry
-    - Quantity
-    - MRP (Maximum Retail Price)
-    - Basic Details (like ingredients or category)
+    1. Brand Name
+    2. Date of Manufacturing
+    3. Date of Expiry
+    4. Quantity
+    5. MRP (Maximum Retail Price)
+    6. Basic Details (like ingredients or category)
 
     Present the information in a clear, structured format.
     """
 
-    st.write("Sending request to Gemini model...")
     try:
         response = model.generate_content(
             [image_part, prompt],
@@ -72,50 +62,49 @@ def analyze_image(image):
                 "top_k": 32
             }
         )
-        st.write("Response received from Gemini model.")
         return response.text
     except Exception as e:
         st.error(f"Error in image analysis: {str(e)}")
-        st.write(f"Error type: {type(e).__name__}")
-        st.write(f"Error args: {e.args}")
         return None
 
 def parse_product_details(analysis):
     details = {
-        "Brand Name": "Not mentioned",
-        "Date of Manufacturing": "Not mentioned",
-        "Date of Expiry": "Not mentioned",
-        "Quantity": "Not mentioned",
-        "MRP": "Not mentioned",
-        "Basic Details": "Not mentioned"
+        "Brand Name": "Not identified",
+        "Date of Manufacturing": "Not specified",
+        "Date of Expiry": "Not specified",
+        "Quantity": "Not specified",
+        "MRP": "Not specified",
+        "Basic Details": "Not provided"
     }
     
     if analysis:
-        # Use regex to extract information
         patterns = {
-            "Brand Name": r"\*\*Brand Name:\*\* (.+)",
-            "Date of Manufacturing": r"\*\*Date of Manufacturing:\*\* (.+)",
-            "Date of Expiry": r"\*\*Date of Expiry:\*\* (.+)",
-            "Quantity": r"\*\*Quantity:\*\* (.+)",
-            "MRP": r"\*\*MRP:\*\* (.+)",
-            "Basic Details": r"\*\*Basic Details:\*\* (.+)"
+            "Brand Name": r"1\.\s*Brand Name:\s*(.+)",
+            "Date of Manufacturing": r"2\.\s*Date of Manufacturing:\s*(.+)",
+            "Date of Expiry": r"3\.\s*Date of Expiry:\s*(.+)",
+            "Quantity": r"4\.\s*Quantity:\s*(.+)",
+            "MRP": r"5\.\s*MRP \(Maximum Retail Price\):\s*(.+)",
+            "Basic Details": r"6\.\s*Basic Details:\s*(.+)"
         }
         
         for key, pattern in patterns.items():
-            match = re.search(pattern, analysis)
+            match = re.search(pattern, analysis, re.DOTALL | re.IGNORECASE)
             if match:
                 details[key] = match.group(1).strip()
     
     return details
 
 def update_product_data(details):
+    # Check if product already exists
     for product in st.session_state.product_data:
         if (product['Brand Name'] == details['Brand Name'] and
             product['Quantity'] == details['Quantity'] and
             product['MRP'] == details['MRP']):
+            # Update existing entry
             product['Count'] += 1
             return
     
+    # Add new entry if not found
     details['Count'] = 1
     st.session_state.product_data.append(details)
 
@@ -126,27 +115,49 @@ def main():
     
     if uploaded_file is not None:
         image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
         
-        if st.button("Analyze Image"):
-            with st.spinner("Analyzing image..."):
-                analysis = analyze_image(image)
-                if analysis:
-                    st.text("Raw analysis output:")
-                    st.text(analysis)  # Display raw output for debugging
-                    details = parse_product_details(analysis)
-                    update_product_data(details)
-                
-                    st.subheader("Product Details:")
-                    for key, value in details.items():
-                        st.write(f"{key}: {value}")
-                else:
-                    st.error("Unable to analyze the image. Please try again with a different image.")
+        # Resize image for display
+        max_width = 300
+        ratio = max_width / image.width
+        new_size = (max_width, int(image.height * ratio))
+        resized_image = image.resize(new_size)
+        
+        # Display resized image
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            st.image(resized_image, caption="Uploaded Image", use_column_width=True)
+        
+        with col2:
+            if st.button("Analyze Image"):
+                with st.spinner("Analyzing image..."):
+                    analysis = analyze_image(image)
+                    if analysis:
+                        details = parse_product_details(analysis)
+                        update_product_data(details)
+                    
+                        st.subheader("Product Details:")
+                        for key, value in details.items():
+                            if key != 'Count':
+                                st.write(f"**{key}:** {value}")
+                    else:
+                        st.error("Unable to analyze the image. Please try again with a different image.")
     
     st.subheader("Product Inventory")
     if st.session_state.product_data:
         df = pd.DataFrame(st.session_state.product_data)
-        st.dataframe(df)
+        
+        # Reorder columns
+        columns_order = ['Brand Name', 'Date of Manufacturing', 'Date of Expiry', 'Quantity', 'MRP', 'Basic Details', 'Count']
+        df = df[columns_order]
+        
+        # Style the dataframe
+        styled_df = df.style.set_properties(**{'text-align': 'left'})
+        styled_df = styled_df.set_table_styles([
+            {'selector': 'th', 'props': [('font-weight', 'bold'), ('text-align', 'left')]},
+            {'selector': 'td', 'props': [('max-width', '200px'), ('white-space', 'normal')]}
+        ])
+        
+        st.write(styled_df.to_html(escape=False, index=False), unsafe_allow_html=True)
     else:
         st.write("No products scanned yet.")
 
