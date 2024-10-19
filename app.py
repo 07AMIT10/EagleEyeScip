@@ -22,7 +22,7 @@ try:
     vertexai.init(project=project_id, location="us-central1", credentials=credentials)
     
     # Initialize the Gemini model
-    model = GenerativeModel("gemini-pro-vision")
+    model = GenerativeModel("gemini-1.5-flash-002")
     st.success("Google Cloud credentials loaded and Gemini model initialized successfully")
 
     # Debug information
