@@ -2,3 +2,4 @@ streamlit
 google-cloud-aiplatform
 Pillow
 pandas
+google-auth
