@@ -6,6 +6,7 @@ from PIL import Image
 import io
 import json
 from google.oauth2 import service_account
+from google.cloud import aiplatform
 
 # Initialize Streamlit page configuration
 st.set_page_config(page_title="FMCG Product Analyzer", layout="wide")
@@ -25,12 +26,11 @@ try:
 
     # Debug information
     st.write(f"Project ID: {project_id}")
-    st.write("Available models:")
-    for available_model in vertexai.generative_models.GenerativeModel.list():
-        st.write(available_model.name)
+    st.write(f"Vertex AI SDK Version: {aiplatform.__version__}")
+    st.write(f"Initialized model: gemini-pro-vision")
 
 except Exception as e:
-    st.error(f"Error loading Google Cloud credentials: {e}")
+    st.error(f"Error loading Google Cloud credentials: {str(e)}")
     st.stop()
 
 # Initialize session state for product tracking
@@ -68,7 +68,7 @@ def analyze_image(image):
         )
         return response.text
     except Exception as e:
-        st.error(f"Error in image analysis: {e}")
+        st.error(f"Error in image analysis: {str(e)}")
         return None
 
 def parse_product_details(analysis):
