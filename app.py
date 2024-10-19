@@ -136,6 +136,7 @@ def main():
             if st.button("Analyze Image"):
                 with st.spinner("Analyzing image..."):
                     analysis = analyze_image(image)
+                    st.success(response)
                     if analysis:
                         details = parse_product_details(analysis)
                         update_product_data(details)
