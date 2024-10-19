@@ -71,7 +71,7 @@ def analyze_image(image):
                 "top_k": 32
             }
         )
-        st.write("Response received from Gemini model.")
+        st.write("Response received from Gemini model.", response)
         return response.text
     except Exception as e:
         st.error(f"Error in image analysis: {str(e)}")
