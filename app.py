@@ -62,6 +62,7 @@ def analyze_image(image):
                 "top_k": 32
             }
         )
+        st.write(response.text)
         return response.text
     except Exception as e:
         st.error(f"Error in image analysis: {str(e)}")
@@ -136,7 +137,7 @@ def main():
             if st.button("Analyze Image"):
                 with st.spinner("Analyzing image..."):
                     analysis = analyze_image(image)
-                    st.success(response)
+                    # st.success(response)
                     if analysis:
                         details = parse_product_details(analysis)
                         update_product_data(details)
