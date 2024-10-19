@@ -43,13 +43,13 @@ def analyze_image(image):
     prompt = """
     Analyze this image of an FMCG product and provide the following details:
     1. Brand Name
-    2. Date of Manufacturing(just give dates only... no addtional text or reason... e.g.(convert the obtained date to the format mm/yyyy))
-    3. Date of Expiry(just give dates only... no addtional text or reason... e.g.(convert the obtained date to the format mm/yyyy)), if best before is given then calculate it and show it the given format
-    4. Quantity(if rs/gm is given or you can somehow calculate it then give that only...) no need for extra text...
-    5. MRP (Maximum Retail Price)(if price per quantity or something like that is given or you can somehow calculate it then give that only...) no need for extra text...
+    2. Date of Manufacturing (format: MM/YYYY)
+    3. Date of Expiry (format: MM/YYYY). If 'Best Before' is given, calculate the expiry date and provide only the final date.
+    4. Quantity (provide only the numerical value and unit, e.g., 400 ml)
+    5. MRP (Maximum Retail Price) (provide only the numerical value with currency symbol, e.g., ₹400)
     6. Basic Details (like ingredients or category)
-    
-    Present the information in a clear, structured format.
+
+    Present the information in a clear, structured format without additional explanations.
     """
 
     try:
@@ -62,7 +62,6 @@ def analyze_image(image):
                 "top_k": 32
             }
         )
-        st.write(response.text)
         return response.text
     except Exception as e:
         st.error(f"Error in image analysis: {str(e)}")
@@ -79,24 +78,30 @@ def parse_product_details(analysis):
     }
     
     if analysis:
-        patterns = {
-            "Brand Name": r"1\.?\s*Brand Name:\s*(.+?)(?=\n\d\.|\Z)",
-            "Date of Manufacturing": r"2\.?\s*Date of Manufacturing:\s*(.+?)(?=\n\d\.|\Z)",
-            "Date of Expiry": r"3\.?\s*Date of Expiry:\s*(.+?)(?=\n\d\.|\Z)",
-            "Quantity": r"4\.?\s*Quantity:\s*(.+?)(?=\n\d\.|\Z)",
-            "MRP": r"5\.?\s*MRP(?:\s*\(Maximum Retail Price\))?:\s*(.+?)(?=\n\d\.|\Z)",
-            "Basic Details": r"6\.?\s*Basic Details:(?:\s*[\s\S]*?)?(?:Category|Ingredients):([\s\S]+?)(?=\n\d\.|\Z|$)"
-        }
-        
-        for key, pattern in patterns.items():
-            match = re.search(pattern, analysis, re.DOTALL | re.IGNORECASE)
-            if match:
-                details[key] = match.group(1).strip().split('\n')[0]  # Extract only the first line of match
-                
-        # Additional processing for Basic Details
-        if details["Basic Details"]:
-            basic_details_lines = details["Basic Details"].split('\n')
-            details["Basic Details"] = '\n'.join([line.strip() for line in basic_details_lines if line.strip()])  # Remove empty lines
+        lines = analysis.split('\n')
+        current_key = None
+        for line in lines:
+            line = line.strip()
+            if line.startswith('1.') and 'Brand Name:' in line:
+                current_key = "Brand Name"
+                details[current_key] = line.split(':', 1)[1].strip()
+            elif line.startswith('2.') and 'Date of Manufacturing:' in line:
+                current_key = "Date of Manufacturing"
+                details[current_key] = line.split(':', 1)[1].strip()
+            elif line.startswith('3.') and 'Date of Expiry:' in line:
+                current_key = "Date of Expiry"
+                details[current_key] = line.split(':', 1)[1].strip()
+            elif line.startswith('4.') and 'Quantity:' in line:
+                current_key = "Quantity"
+                details[current_key] = line.split(':', 1)[1].strip()
+            elif line.startswith('5.') and 'MRP:' in line:
+                current_key = "MRP"
+                details[current_key] = line.split(':', 1)[1].strip()
+            elif line.startswith('6.') and 'Basic Details:' in line:
+                current_key = "Basic Details"
+                details[current_key] = line.split(':', 1)[1].strip()
+            elif current_key == "Basic Details":
+                details[current_key] += " " + line
     
     return details
 
@@ -137,14 +142,13 @@ def main():
             if st.button("Analyze Image"):
                 with st.spinner("Analyzing image..."):
                     analysis = analyze_image(image)
-                    # st.success(response)
                     if analysis:
                         details = parse_product_details(analysis)
                         update_product_data(details)
                     
                         st.subheader("Product Details:")
                         for key, value in details.items():
-                            if key!= 'Count':
+                            if key != 'Count':
                                 st.write(f"**{key}:** {value}")
                     else:
                         st.error("Unable to analyze the image. Please try again with a different image.")
