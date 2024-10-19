@@ -43,12 +43,12 @@ def analyze_image(image):
     prompt = """
     Analyze this image of an FMCG product and provide the following details:
     1. Brand Name
-    2. Date of Manufacturing
-    3. Date of Expiry
-    4. Quantity
-    5. MRP (Maximum Retail Price)
+    2. Date of Manufacturing(just give dates only... no addtional text or reason... e.g.(convert the obtained date to the format mm/yyyy))
+    3. Date of Expiry(just give dates only... no addtional text or reason... e.g.(convert the obtained date to the format mm/yyyy)), if best before is given then calculate it and show it the given format
+    4. Quantity(if rs/gm is given or you can somehow calculate it then give that only...) no need for extra text...
+    5. MRP (Maximum Retail Price)(if price per quantity or something like that is given or you can somehow calculate it then give that only...) no need for extra text...
     6. Basic Details (like ingredients or category)
-
+    if any of the above mentioned detail is not given just give "Not visible" as response...
     Present the information in a clear, structured format.
     """
 
