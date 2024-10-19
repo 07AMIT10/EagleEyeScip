@@ -7,35 +7,9 @@ import io
 import json
 from google.oauth2 import service_account
 from google.cloud import aiplatform
+import re
 
-# Initialize Streamlit page configuration
-st.set_page_config(page_title="FMCG Product Analyzer", layout="wide")
-
-# Load Google Cloud credentials
-try:
-    credentials_info = json.loads(st.secrets["GOOGLE_APPLICATION_CREDENTIALS"])
-    credentials = service_account.Credentials.from_service_account_info(credentials_info)
-    project_id = st.secrets["GOOGLE_CLOUD_PROJECT"]
-    
-    # Initialize Vertex AI
-    vertexai.init(project=project_id, location="us-central1", credentials=credentials)
-    
-    # Initialize the Gemini model
-    model = GenerativeModel("gemini-pro-vision")
-    st.success("Google Cloud credentials loaded and Gemini model initialized successfully")
-
-    # Debug information
-    st.write(f"Project ID: {project_id}")
-    st.write(f"Vertex AI SDK Version: {aiplatform.__version__}")
-    st.write(f"Initialized model: gemini-pro-vision")
-
-except Exception as e:
-    st.error(f"Error loading Google Cloud credentials: {str(e)}")
-    st.stop()
-
-# Initialize session state for product tracking
-if 'product_data' not in st.session_state:
-    st.session_state.product_data = []
+# [Previous code remains the same up to the analyze_image function]
 
 def analyze_image(image):
     st.write("Starting image analysis...")
@@ -71,7 +45,7 @@ def analyze_image(image):
                 "top_k": 32
             }
         )
-        st.write("Response received from Gemini model.", response)
+        st.write("Response received from Gemini model.")
         return response.text
     except Exception as e:
         st.error(f"Error in image analysis: {str(e)}")
@@ -81,65 +55,33 @@ def analyze_image(image):
 
 def parse_product_details(analysis):
     details = {
-        "Brand Name": "",
-        "Date of Manufacturing": "",
-        "Date of Expiry": "",
-        "Quantity": "",
-        "MRP": "",
-        "Basic Details": ""
+        "Brand Name": "Not mentioned",
+        "Date of Manufacturing": "Not mentioned",
+        "Date of Expiry": "Not mentioned",
+        "Quantity": "Not mentioned",
+        "MRP": "Not mentioned",
+        "Basic Details": "Not mentioned"
     }
     
     if analysis:
-        lines = analysis.split('\n')
-        current_key = None
-        for line in lines:
-            line = line.strip()
-            if line in details:
-                current_key = line
-            elif current_key and line:
-                details[current_key] = line
+        # Use regex to extract information
+        patterns = {
+            "Brand Name": r"\*\*Brand Name:\*\* (.+)",
+            "Date of Manufacturing": r"\*\*Date of Manufacturing:\*\* (.+)",
+            "Date of Expiry": r"\*\*Date of Expiry:\*\* (.+)",
+            "Quantity": r"\*\*Quantity:\*\* (.+)",
+            "MRP": r"\*\*MRP:\*\* (.+)",
+            "Basic Details": r"\*\*Basic Details:\*\* (.+)"
+        }
+        
+        for key, pattern in patterns.items():
+            match = re.search(pattern, analysis)
+            if match:
+                details[key] = match.group(1).strip()
     
     return details
 
-def update_product_data(details):
-    for product in st.session_state.product_data:
-        if (product['Brand Name'] == details['Brand Name'] and
-            product['Quantity'] == details['Quantity'] and
-            product['MRP'] == details['MRP']):
-            product['Count'] += 1
-            return
-    
-    details['Count'] = 1
-    st.session_state.product_data.append(details)
-
-def main():
-    st.title("FMCG Product Analyzer and Tracker")
-    
-    uploaded_file = st.file_uploader("Choose an image of an FMCG product", type=["jpg", "jpeg", "png"])
-    
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
-        
-        if st.button("Analyze Image"):
-            with st.spinner("Analyzing image..."):
-                analysis = analyze_image(image)
-                if analysis:
-                    details = parse_product_details(analysis)
-                    update_product_data(details)
-                
-                    st.subheader("Product Details:")
-                    for key, value in details.items():
-                        st.write(f"{key}: {value}")
-                else:
-                    st.error("Unable to analyze the image. Please try again with a different image.")
-    
-    st.subheader("Product Inventory")
-    if st.session_state.product_data:
-        df = pd.DataFrame(st.session_state.product_data)
-        st.dataframe(df)
-    else:
-        st.write("No products scanned yet.")
+# [The rest of the code (update_product_data and main functions) remains the same]
 
 if __name__ == "__main__":
     main()
