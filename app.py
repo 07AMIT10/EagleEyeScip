@@ -12,6 +12,15 @@ from google.cloud import aiplatform
 # Initialize Streamlit page configuration
 st.set_page_config(page_title="FMCG Product Analyzer", layout="wide")
 
+hide_streamlit_style = """
+    <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 # Load Google Cloud credentials
 try:
     credentials_info = json.loads(st.secrets["GOOGLE_APPLICATION_CREDENTIALS"])
