@@ -15,10 +15,10 @@ st.set_page_config(page_title="FMCG Product Analyzer", layout="wide")
 hide_streamlit_style = """
     <style>
         #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
+        footer {display: none !important;}
         header {visibility: hidden;}
-        .viewerBadge_container__1QSob {visibility: hidden;}
-        .css-1lsmgbg.egzxvld1 {visibility: hidden;}
+        .viewerBadge_container__1QSob {display: none !important;}
+        .css-1lsmgbg.egzxvld1 {display: none !important;}
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
